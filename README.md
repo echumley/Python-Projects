@@ -1,1 +1,1 @@
-This repo holds random Python projects that I complete while I learn Python.
+This repo holds random Python projects that I complete while learning Python.
