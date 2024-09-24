@@ -25,13 +25,14 @@ try: # Using a try block instead of a while loop due to its graceful error handl
 						sha256 = hashlib.sha256()
 						sha256.update(fileContents)
 						hashedFile = sha256.hexdigest()
+						print(f'Hashing: {item}') # Debug purposes - REMOVE AFTER
+					print(f'{item}: {hashedFile}')
 
-					print(hashedFile)
-					
 		except Exception as err:
-			print(f'ERROR: {err}')
+			print(f'ERROR: Failed to process {item} - {err}')
 		except PermissionError as permerr:
-			print(f'PERMISSION ERROR: {permerr}')
+			print(f'ERROR: Cannot access {item} - {permerr}')
+
 	else:
 		print("INVALID DIRECTORY - This directory doesn't exist.")
 except Exception as er:
