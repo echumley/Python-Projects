@@ -11,7 +11,7 @@ try: # Using a try block instead of a while loop due to its graceful error handl
 		print(f'Walking: {dirPath.absolute()}....')
 		print('=' * 90)
 		try:
-			for item in dirPath.iterdir(): # Iterates through each item in the directory
+			for item in dirPath.rglob('*'): # Iterates through each item in the directory
 				if fileNum >= 100: # Breaks out of the loop if the file count reaches 100
 					print("File limit reached. Exiting loop...")
 					break
@@ -25,7 +25,6 @@ try: # Using a try block instead of a while loop due to its graceful error handl
 						sha256 = hashlib.sha256()
 						sha256.update(fileContents)
 						hashedFile = sha256.hexdigest()
-						print(f'Hashing: {item}') # Debug purposes - REMOVE AFTER
 					print(f'{item}: {hashedFile}')
 
 		except Exception as err:
