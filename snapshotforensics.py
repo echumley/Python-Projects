@@ -15,31 +15,37 @@ from datetime import datetime
 # --- FUNCTION DEFINITION --- #
 def dirhashdump(poolPath):
     try:
-        print(f'Walking: {poolPath.absolute()}....')
+        print(f'Walking: {item}....')
         print('=' * 90)
 
         with open(f'{snapshotHashFile}', 'a') as hashFile:
 
             try:
                 for file2hash in poolPath.rglob('*'): # Iterates through each item in the directory
-                    # Generates the hashes of each file's contents
-                    with open(file2hash, 'rb') as file:
-                        fileContents = file.read()
-                        sha256 = hashlib.sha256()
-                        sha256.update(fileContents)
-                        hashedFile = sha256.hexdigest()
+                    if file2hash.is_file():
 
-                    hashFile.write(f'Directory: {hashFile}\n')
-                    hashFile.write('=' * 90 + '\n')
-                    hashFile.write(f'{hashFile.resolve()}: {hashedFile}\n')
-                    hashFile.close()
-                    print(f'Hash file created: {snapshotHashFile}') 
+                        # Generates the hashes of each file's contents
+                        with open(file2hash, 'rb') as file:
+                            fileContents = file.read()
+                            sha256 = hashlib.sha256()
+                            sha256.update(fileContents)
+                            fileHash = sha256.hexdigest()
+
+                        print(f'File Hash of {file2hash}: {fileHash}')
+
+                        #hashFile.write(f'Directory: {file2hash.resolve()}\n')
+                        #hashFile.write('=' * 90 + '\n')
+                        #hashFile.write(f'File: {file2hash}\n')
+                        #hashFile.write(f'Hash: {fileHash}\n')
+                        #hashFile.write('=' * 90 + '\n')
+
+                print(f'Hash file updated: {snapshotHashFile}') 
 
             except Exception as err:
                 print(f'ERROR: Failed to process {hashFile} - {err}')
 
-    except Exception as er:
-        print("INVALID DIRECTORY - This directory doesn't exist.")
+    except Exception as err:
+        print(f'ERROR: {err}')
 
 # --- TIME --- #
 startTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -55,6 +61,9 @@ if os.path.isfile(snapshotHashFile): # Creates a new hash file if one already ex
 
 while True:
     snapPath = pathlib.Path(input('What directory are snapshots located?: ')) # Requests the snapshot storage directory
+
+    if snapList == 'q':
+        break
 
     if snapPath.is_dir(): # Input validation
         zfsPath = pathlib.Path(f'/{input("(PLEASE NOTE: This pool and dataset should already be mounted)\nWhat pool and dataset would you like to use to receieve the snapshots? (ex: pool/dataset):")}') # Requests the ZFS pool & dataset
@@ -97,6 +106,4 @@ while True:
         print(f'{zfsPath} is not a pool or dataset. Did you create them prior to running this script?')
 
 # TO FIX #
-# Not walking correctly
-# Ending prematurely
-# Not restarting after successful completion of a snapshot receveive
+# Not walking correctly (permission error)
