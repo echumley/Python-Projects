@@ -2,6 +2,8 @@ import subprocess
 import pathlib
 import hashlib
 import os
+import platform
+import logging
 from datetime import datetime
 
 # input pool and dataset to use to mount snapshots
@@ -13,62 +15,92 @@ from datetime import datetime
 # after each snapshot is recieved, append the file hashes of that snapshot's files to the text file
 
 # --- FUNCTION DEFINITION --- #
-def dirhashdump(poolPath):
+def getSystemInfo():
     try:
-        print(f'Walking: {item}....')
-        print('=' * 90)
+        info={}
+        info['platform']=platform.system()
+        info['platform-release']=platform.release()
+        info['platform-version']=platform.version()
+        info['architecture']=platform.machine()
+        return info
 
+    except Exception as e:
+        logging.exception(e)
+        return False
+
+def dirHashDump(poolPath):
+    try:
+        print(f'Walking snapshot...') # Insert snapshot name here
+        logging.info(f'Walking snapshot...')
         with open(f'{snapshotHashFile}', 'a') as hashFile:
-
             try:
                 for file2hash in poolPath.rglob('*'): # Iterates through each item in the directory
                     if file2hash.is_file():
 
                         # Generates the hashes of each file's contents
                         with open(file2hash, 'rb') as file:
-                            fileContents = file.read()
                             sha256 = hashlib.sha256()
-                            sha256.update(fileContents)
+                            sha256.update(file.read())
                             fileHash = sha256.hexdigest()
 
-                        print(f'File Hash of {file2hash}: {fileHash}')
+                        logging.info(f'File Hash of {file2hash}: {fileHash}\n')
+                        hashFile.write(f'File Hash of {file2hash}: {fileHash}\n')
 
-                        #hashFile.write(f'Directory: {file2hash.resolve()}\n')
-                        #hashFile.write('=' * 90 + '\n')
-                        #hashFile.write(f'File: {file2hash}\n')
-                        #hashFile.write(f'Hash: {fileHash}\n')
-                        #hashFile.write('=' * 90 + '\n')
-
-                print(f'Hash file updated: {snapshotHashFile}') 
+                logging.info(f'Hash file updated: {snapshotHashFile}')
 
             except Exception as err:
-                print(f'ERROR: Failed to process {hashFile} - {err}')
-
+                logging.info(f'ERROR: Failed to process {hashFile} - {err}')
     except Exception as err:
-        print(f'ERROR: {err}')
+        logging.info(f'FUNCTION ERROR: {err}')
 
 # --- TIME --- #
-startTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+startTime = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 print(f'Start Time:\t{startTime}')
 
 # --- VARIABLE DECLARATION --- #
 snapList = []
 snapshotHashFile = f'SnapshotForensics-{startTime}'
 
+# --- DEBUG LOG --- #
+#Modify the filename for logFile to be your firstNameLastName-Final.txt
+logFile = f'{snapshotHashFile}-debug'
+
+# Creates a new log file if one already exists
+if os.path.isfile(logFile):
+    os.remove(logFile)
+
+# Initializes logging and logs basic system info
+logging.basicConfig(filename = logFile, level = logging.DEBUG, format = '%(process)d - %(levelname)s - %(asctime)s - %(message)s')
+logging.info('Starting log...')
+logging.info(f'Log created on: {startTime}')
+logging.info('=' * 90)
+
+# Log the following platform information (system, release, version, machine)
+sysInfoDict = getSystemInfo()
+
+if sysInfoDict: # This section creates the system information in log
+    logging.info('*** SYSTEM INFORMATION ***')
+    for k, v in sysInfoDict.items():
+        logging.info(f'\t{k}: {v}')
+    logging.info('=' * 90)
+
 # --- MAIN --- #
 if os.path.isfile(snapshotHashFile): # Creates a new hash file if one already exists
     os.remove(snapshotHashFile)
 
 while True:
-    snapPath = pathlib.Path(input('What directory are snapshots located?: ')) # Requests the snapshot storage directory
+    snapPath = input("Enter directory snapshot path or 'q' to quit: ") # Requests the snapshot storage directory
 
-    if snapList == 'q':
+    if snapPath == 'q':
         break
+
+    snapPath = pathlib.Path(snapPath)
 
     if snapPath.is_dir(): # Input validation
         zfsPath = pathlib.Path(f'/{input("(PLEASE NOTE: This pool and dataset should already be mounted)\nWhat pool and dataset would you like to use to receieve the snapshots? (ex: pool/dataset):")}') # Requests the ZFS pool & dataset
     else:
         print(f'{snapPath} is not a valid directory')
+        logging.info(f'{snapPath} is not a valid directory')
         break
 
     if zfsPath.is_dir(): # Input validation
@@ -84,26 +116,20 @@ while True:
                         stdout, stderr = rxProcess.communicate()
 
                         if rxProcess.returncode == 0:
-                            dirhashdump(zfsPath)
+                            dirHashDump(zfsPath)
                             snapList.remove(item)
-                            print(f'Snapshots remaining: {len(snapList)}')
+                            print(f'Snapshots remaining: {len(snapList)}\n')
+                            logging.info(f'Snapshots remaining: {len(snapList)}\n')
                             break
                         else:
-                            print(f"ERROR: Failed to receive snapshot {item}")
-                            print(f"Command failed with return code {rxProcess.returncode}")
-                            print(f"Error message:\n{stderr}")
-                    else:
-                        print(f'{item} is not a file. Skipping...')
-                else:
-                    print(f'All snapshots have been processed. Script completed!')
-                    break
+                            logging.info(f"NON-FATAL ERROR: Failed to receive snapshot {item}")
+                            logging.info(f"Command failed with return code {rxProcess.returncode}: {stderr}") # Remove after debug or add to debug messages
 
+            print(f'All snapshots have been processed')
+            logging.info(f'All snapshots have been processed')
         except Exception as err:
-            print(f'ERROR: {err}')
+            logging.info(f'LOOP ERROR: {err}')
         except PermissionError as permerr:
-            print(f'PERMISSION ERROR: {permerr}')
+            logging.info(f'LOOP PERMISSION ERROR: {permerr}')
     else:
         print(f'{zfsPath} is not a pool or dataset. Did you create them prior to running this script?')
-
-# TO FIX #
-# Not walking correctly (permission error)
